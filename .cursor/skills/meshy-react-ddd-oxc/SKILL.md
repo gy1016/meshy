@@ -15,7 +15,10 @@ Use this skill for all code work in this repo. Keep architecture stable, boundar
 2. Disallow `any` and implicit `any`.
 3. Prefer single quotes, no semicolons, max line width around 80.
 4. Use Oxc tooling as the formatting and linting source of truth.
-5. Keep naming consistent:
+5. Use absolute alias imports only for in-repo code:
+   - use `@/` for modules under `src`
+   - disallow `./` and `../` imports in `src` files
+6. Keep naming consistent:
    - folders: `kebab-case`
    - components: `PascalCase`
    - variables/functions: `camelCase`

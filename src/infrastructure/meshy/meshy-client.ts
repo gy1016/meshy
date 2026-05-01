@@ -1,10 +1,10 @@
+import { MESHY_POLLING } from "@/shared/constants/meshy.constants";
+
 const MESHY_BASE_URL = "https://api.meshy.ai/openapi/v1/image-to-3d";
 
-export type MeshyTaskStatus = "PENDING" | "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | "CANCELED";
-
-export interface MeshyImageTo3DTask {
+interface MeshyTaskResponse {
   id: string;
-  status: MeshyTaskStatus;
+  status: "PENDING" | "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | "CANCELED";
   progress: number;
   model_urls?: {
     glb?: string;
@@ -15,27 +15,10 @@ export interface MeshyImageTo3DTask {
   };
 }
 
-interface CreateImageTaskPayload {
-  image_url: string;
-  ai_model?: "latest" | "meshy-6" | "meshy-5";
-  should_texture?: boolean;
-  target_formats?: Array<"glb" | "obj" | "fbx" | "stl" | "usdz" | "3mf">;
-}
-
-interface WaitTaskOptions {
-  timeoutMs?: number;
-  onProgress?: (task: MeshyImageTo3DTask) => void;
-}
-
 function getApiKey() {
-  const viteKey = import.meta.env.VITE_MESHY_API_KEY;
-  const legacyKey = (import.meta.env as Record<string, string | undefined>).MESHY_API_KEY;
-  const apiKey = viteKey || legacyKey;
-
+  const apiKey = import.meta.env.VITE_MESHY_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      "缺少 Meshy API Key。请在 .env.local 中设置 VITE_MESHY_API_KEY=...（前端直连需要 VITE_ 前缀）。",
-    );
+    throw new Error("缺少 Meshy API Key。请在 .env.local 设置 VITE_MESHY_API_KEY=...");
   }
 
   return apiKey;
@@ -60,46 +43,55 @@ async function requestMeshy<T>(path: string, init: RequestInit = {}) {
   return body as T;
 }
 
-export async function createImageTo3DTask(payload: CreateImageTaskPayload) {
-  const result = await requestMeshy<{ result: string }>("", {
+export async function createMeshyImageTo3DTask(imageDataUri: string) {
+  const response = await requestMeshy<{ result: string }>("", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      image_url: imageDataUri,
+      ai_model: "latest",
+      should_texture: true,
+      target_formats: ["glb"],
+    }),
   });
-  return result.result;
+
+  return response.result;
 }
 
-export async function getImageTo3DTask(taskId: string) {
-  return requestMeshy<MeshyImageTo3DTask>(`/${taskId}`);
+function getMeshyImageTo3DTask(taskId: string) {
+  return requestMeshy<MeshyTaskResponse>(`/${taskId}`);
 }
 
-function getPollingDelayMs(task: MeshyImageTo3DTask, elapsedMs: number) {
-  // 前期更快拿反馈，后期放缓减少请求压力。
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(() => resolve(), ms);
+  });
+}
+
+function getPollingDelayMs(progress: number, elapsedMs: number) {
   let base = 5000;
   if (elapsedMs < 30_000) base = 2500;
-  if (task.progress >= 80) base = 7000;
+  if (progress >= 80) base = 7000;
   if (elapsedMs > 5 * 60_000) base = 9000;
 
   const jitter = Math.floor(base * (Math.random() * 0.2 - 0.1));
   return base + jitter;
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export async function waitForImageTo3DTask(taskId: string, options: WaitTaskOptions = {}) {
-  const timeoutMs = options.timeoutMs ?? 10 * 60_000;
+export async function waitForMeshyImageTo3DTask(
+  taskId: string,
+  onProgress: (task: MeshyTaskResponse) => void,
+) {
   const startedAt = Date.now();
 
-  while (Date.now() - startedAt < timeoutMs) {
-    let task: MeshyImageTo3DTask;
+  while (Date.now() - startedAt < MESHY_POLLING.timeoutMs) {
+    let task: MeshyTaskResponse;
     try {
-      task = await getImageTo3DTask(taskId);
-      options.onProgress?.(task);
+      task = await getMeshyImageTo3DTask(taskId);
+      onProgress(task);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes("429")) throw error;
-      await sleep(5000);
+      await sleep(MESHY_POLLING.retryOnRateLimitMs);
       continue;
     }
 
@@ -108,7 +100,7 @@ export async function waitForImageTo3DTask(taskId: string, options: WaitTaskOpti
       throw new Error(task.task_error?.message || `任务已${task.status}`);
     }
 
-    await sleep(getPollingDelayMs(task, Date.now() - startedAt));
+    await sleep(getPollingDelayMs(task.progress, Date.now() - startedAt));
   }
 
   throw new Error("任务轮询超时，请稍后在 Meshy 控制台查看任务状态。");

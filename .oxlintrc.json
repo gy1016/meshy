@@ -8,6 +8,12 @@
   },
   "rules": {
     "typescript/no-explicit-any": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": ["./*", "../*"]
+      }
+    ],
     "react/react-in-jsx-scope": "off",
     "import/no-unassigned-import": "off",
     "unicorn/no-useless-fallback-in-spread": "off",

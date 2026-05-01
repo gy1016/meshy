@@ -1,0 +1,22 @@
+---
+description: Enforce alias-based absolute imports across src
+globs: src/**/*.{ts,tsx}
+alwaysApply: true
+---
+
+# Absolute Imports Only
+
+- Use alias-based absolute imports for all in-repo modules under `src`.
+- Required alias format: `@/path/to/module`.
+- Do not use relative imports such as `./` or `../` in `src` code.
+- Keep third-party imports unchanged (for example `react`, `tldraw`).
+
+Examples:
+
+```ts
+// bad
+import { useModelConversion } from "../hooks/use-model-conversion"
+
+// good
+import { useModelConversion } from "@/domains/model-conversion/hooks/use-model-conversion"
+```
