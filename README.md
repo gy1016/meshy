@@ -1,5 +1,9 @@
 # Meshy 作业实现（tldraw + R3F）
 
+![One Piece Demo](./docs/gif/one-piece.gif)
+
+Vercel 在线地址：[https://meshy-three.vercel.app](https://meshy-three.vercel.app)
+
 ## 1. 项目概述
 
 本项目实现了一个 `3D in 2D Canvas` 原型：用户在 `tldraw` 无限画布中上传图片，并将其转换为可交互的 3D 模型 shape。
