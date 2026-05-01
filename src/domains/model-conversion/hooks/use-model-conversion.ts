@@ -1,139 +1,131 @@
-﻿import { message } from "antd";
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import type { TLAsset, TLAssetId, TLImageShape } from "tldraw";
-import type { Editor } from "tldraw";
+import { message } from "antd";
+import { useCallback, useState } from "react";
+import type { TLAsset, TLAssetId, TLImageShape, TLShapeId } from "tldraw";
+import { createShapeId, type Editor } from "tldraw";
 import type { ModelConversionRepository } from "@/domains/model-conversion/repositories/model-conversion.repository";
-import { convertImageTo3D } from "@/domains/model-conversion/services/convert-image-to-3d.service";
-import type { ModelConversionState } from "@/domains/model-conversion/types/model-conversion.type";
-import { MESHY_PANEL_TEXT } from "@/shared/constants/meshy.constants";
+import {
+  convertImageTo3D,
+  type ConversionProgress,
+} from "@/domains/model-conversion/services/convert-image-to-3d.service";
 
 interface UseModelConversionOptions {
   repository: ModelConversionRepository;
 }
 
-interface UseModelConversionResult {
-  state: ModelConversionState;
-  convertButtonText: string;
-  handleConvertSelectedImage: (editor: Editor | null) => Promise<void>;
+export interface ActiveConversionTask {
+  sourceShapeId: TLShapeId;
+  isConverting: boolean;
+  statusText: string;
+  progress: number;
 }
 
-type ConversionStateSetter = Dispatch<SetStateAction<ModelConversionState>>;
+interface UseModelConversionResult {
+  activeTask: ActiveConversionTask | null;
+  handleConvertImageShape: (editor: Editor | null, imageShapeId: TLShapeId) => Promise<void>;
+}
 
-async function resolveSelectedImageUrl(editor: Editor) {
-  const selectedShape = editor.getOnlySelectedShape() as TLImageShape | null;
-  if (!selectedShape || selectedShape.type !== "image") {
-    message.warning("请先选中一张图片后再进行转换。");
-    return null;
-  }
+function resolveImageShape(editor: Editor, imageShapeId: TLShapeId) {
+  const shape = editor.getShape(imageShapeId) as TLImageShape | undefined;
+  if (!shape || shape.type !== "image") return null;
+  return shape;
+}
 
-  const assetId = selectedShape.props.assetId;
-  if (!assetId) {
-    message.warning("当前图片缺少 asset 信息，无法转换。");
-    return null;
-  }
+function resolveImageUrl(editor: Editor, imageShape: TLImageShape) {
+  const assetId = imageShape.props.assetId;
+  if (!assetId) return null;
 
   const typedAssetId = assetId as TLAssetId;
   const asset = editor.getAsset(typedAssetId) as TLAsset | undefined;
-  const imageUrl =
-    (asset as { props?: { src?: string } }).props?.src ||
-    (await editor.resolveAssetUrl(typedAssetId, {
-      shouldResolveToOriginal: true,
-    }));
-
-  if (!imageUrl) {
-    message.warning("无法读取图片地址，请重新上传图片后重试。");
-    return null;
-  }
-
-  return imageUrl;
+  return (asset as { props?: { src?: string } }).props?.src ?? null;
 }
 
-function setPreparingState(setState: ConversionStateSetter) {
-  setState((prevState) => ({
-    ...prevState,
-    isConverting: true,
-    status: "preparing",
-    statusText: MESHY_PANEL_TEXT.preparing,
-    latestGlbUrl: "",
-  }));
-}
-
-function setRunningState(setState: ConversionStateSetter, statusText: string) {
-  setState((prevState) => ({
-    ...prevState,
-    status: "running",
-    statusText,
-  }));
-}
-
-function setSuccessState(setState: ConversionStateSetter, glbUrl: string) {
-  setState({
-    isConverting: false,
-    status: "success",
-    statusText: MESHY_PANEL_TEXT.success,
-    latestGlbUrl: glbUrl,
+function applyProgress(
+  setActiveTask: React.Dispatch<React.SetStateAction<ActiveConversionTask | null>>,
+  shapeId: TLShapeId,
+  progress: ConversionProgress,
+) {
+  setActiveTask((prevTask) => {
+    if (!prevTask || prevTask.sourceShapeId !== shapeId) return prevTask;
+    return {
+      ...prevTask,
+      statusText: progress.statusText,
+      progress: progress.progress,
+    };
   });
 }
 
-function setErrorState(setState: ConversionStateSetter, errorMessage: string) {
-  setState((prevState) => ({
-    ...prevState,
-    isConverting: false,
-    status: "error",
-    statusText: `转换失败：${errorMessage}`,
-  }));
-}
+function createModelShapeFromImage(editor: Editor, imageShapeId: TLShapeId, assetUrl: string) {
+  const latestShape = resolveImageShape(editor, imageShapeId);
+  if (!latestShape) {
+    throw new Error("Source image shape was removed before conversion finished.");
+  }
 
-function createConvertHandler(
-  repository: ModelConversionRepository,
-  setState: ConversionStateSetter,
-) {
-  return async (editor: Editor | null) => {
-    if (!editor) return;
-
-    const selectedImageUrl = await resolveSelectedImageUrl(editor);
-    if (!selectedImageUrl) return;
-
-    try {
-      setPreparingState(setState);
-      const glbUrl = await convertImageTo3D(repository, selectedImageUrl, (statusText) => {
-        setRunningState(setState, statusText);
-      });
-
-      setSuccessState(setState, glbUrl);
-      message.success("转换成功，页面右下角已生成 GLB 链接。");
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "未知错误";
-      setErrorState(setState, errorMessage);
-      message.error(`转换失败：${errorMessage}`);
-    }
+  const modelShape = {
+    id: createShapeId(),
+    type: "meshy-model",
+    x: latestShape.x,
+    y: latestShape.y,
+    rotation: latestShape.rotation,
+    props: {
+      w: latestShape.props.w,
+      h: latestShape.props.h,
+      assetUrl,
+      yRotation: 0,
+    },
   };
+
+  // Split history around conversion replacement so one undo targets only this replace step.
+  editor.markHistoryStoppingPoint("before-image-to-3d-replace");
+  editor.deleteShapes([latestShape.id]).createShapes([modelShape as never]);
+  editor.markHistoryStoppingPoint("after-image-to-3d-replace");
 }
 
 export function useModelConversion(options: UseModelConversionOptions): UseModelConversionResult {
-  const [state, setState] = useState<ModelConversionState>({
-    isConverting: false,
-    status: "idle",
-    statusText: MESHY_PANEL_TEXT.idle,
-    latestGlbUrl: "",
-  });
+  const [activeTask, setActiveTask] = useState<ActiveConversionTask | null>(null);
 
-  const handleConvertSelectedImage = useCallback(
-    async (editor: Editor | null) => {
-      const convertHandler = createConvertHandler(options.repository, setState);
-      await convertHandler(editor);
+  const handleConvertImageShape = useCallback(
+    async (editor: Editor | null, imageShapeId: TLShapeId) => {
+      if (!editor) return;
+      if (activeTask?.isConverting) return;
+
+      const imageShape = resolveImageShape(editor, imageShapeId);
+      if (!imageShape) {
+        message.warning("Please hover an image shape before converting.");
+        return;
+      }
+
+      const imageUrl = resolveImageUrl(editor, imageShape);
+      if (!imageUrl) {
+        message.warning("Selected image shape has no resolvable source.");
+        return;
+      }
+
+      setActiveTask({
+        sourceShapeId: imageShapeId,
+        isConverting: true,
+        statusText: "Preparing image data...",
+        progress: 0,
+      });
+
+      try {
+        const glbUrl = await convertImageTo3D(options.repository, imageUrl, (progress) => {
+          applyProgress(setActiveTask, imageShapeId, progress);
+        });
+
+        createModelShapeFromImage(editor, imageShapeId, glbUrl);
+        setActiveTask(null);
+        message.success("Converted to 3D shape successfully.");
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        setActiveTask(null);
+        message.error(`Conversion failed: ${errorMessage}`);
+      }
     },
-    [options.repository],
-  );
-
-  const convertButtonText = useMemo(
-    () => (state.isConverting ? MESHY_PANEL_TEXT.buttonLoading : MESHY_PANEL_TEXT.buttonIdle),
-    [state.isConverting],
+    [activeTask?.isConverting, options.repository],
   );
 
   return {
-    state,
-    convertButtonText,
-    handleConvertSelectedImage,
+    activeTask,
+    handleConvertImageShape,
   };
 }

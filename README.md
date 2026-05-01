@@ -104,3 +104,50 @@ pnpm preview
 3. 实现独立旋转控件并将旋转写回 shape props。
 4. 完整验证链路：上传 → 转 3D → 移动 → 缩放 → 旋转 → 删除 → undo/redo。
 5. README 补充性能取舍、AI 使用记录、时间分配、部署信息。
+
+## Part 3.4 实现说明：模型姿态旋转
+
+- 在 `meshy-model` shape 处于选中状态时，显示独立旋转控件（位于 shape 顶部中间）。
+- 点击一次控件，模型绕 Y 轴旋转 `+45°`（`Math.PI / 4`）。
+- 旋转只更新 `shape.props.yRotation`，不会改 `shape.rotation`（2D 画布朝向）。
+- 视觉效果是模型在原地“转一下”，shape 的 2D 包围盒保持不变。
+
+### 关于 store 与 undo/redo
+
+- 本实现选择 **走 tldraw store**：通过 `editor.updateShape({ props: { yRotation } })` 更新 shape props。
+- 同时在旋转前后打 `markHistoryStoppingPoint`，确保每次点击旋转都形成明确历史步。
+- 结果：该操作可被 tldraw 的 undo/redo 正常捕获与回放。
+
+如果绕开 tldraw store（例如仅把角度放在 React 本地 state）：
+
+- 画面会转，但 store 不知道这个变化；
+- undo/redo 无法回放这次旋转；
+- 状态也无法在协同/持久化场景正确还原。
+
+## Part 3.5 验证与问题分析（undo/redo）
+
+### 验证结果（当前）
+
+- 已验证通过：模型姿态旋转（`yRotation`）可被 tldraw undo/redo 捕获。
+- 已重点排查：异步 Image-to-3D 任务完成后的 shape 替换历史捕获问题。
+
+### 典型问题：异步完成后的 shape 替换为什么可能“丢历史”
+
+在异步链路中，最容易出现的问题是：
+
+1. API 完成回调触发时，直接做 `deleteShape + createShape`；
+2. 这两步被历史系统拆成多个 step，或与前后操作被错误合并；
+3. 用户按一次 undo 时，可能回到“中间态”（例如 3D 没了但图片未回），体感上像“历史没捕获”或“撤销错位”。
+
+根因本质是：**异步时机 + 多条命令 + 历史分组边界不明确**。
+
+### 本项目处理策略
+
+- 替换操作统一走 tldraw store 命令链（不是 React 本地状态）。
+- 异步回调里采用链式替换命令：`deleteShapes(...).createShapes(...)`。
+- 在替换前后显式调用 `markHistoryStoppingPoint`，人为划清历史边界，避免与其它步骤合并。
+
+### 结论
+
+- 只要“异步替换”也走 tldraw store，并显式管理历史边界，undo/redo 可以稳定回放。
+- 如果绕开 store（或不控制历史边界），异步替换非常容易出现撤销错位，这也是该类问题的高频来源。

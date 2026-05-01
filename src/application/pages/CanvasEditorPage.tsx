@@ -1,32 +1,36 @@
 ﻿import { Tldraw } from "tldraw";
+import { MeshyModelShapeUtil } from "@/domains/canvas-editor/shapes/meshy-model-shape.util";
 import { modelConversionRepository } from "@/application/adapters/model-conversion.repository";
 import { useCanvasEditor } from "@/domains/canvas-editor";
 import { useModelConversion } from "@/domains/model-conversion";
-import { MeshyConversionPanel } from "@/shared/ui/MeshyConversionPanel";
+import { ImageToModelOverlay } from "@/shared/ui/ImageToModelOverlay";
+import { ModelRotationOverlay } from "@/shared/ui/ModelRotationOverlay";
 import { TldrawMinimalToolbar } from "@/shared/ui/TldrawMinimalToolbar";
 import "tldraw/tldraw.css";
 
 export function CanvasEditorPage() {
   const { editorRef, handleMount, handleDragOver, handleDrop } = useCanvasEditor();
-  const { state, convertButtonText, handleConvertSelectedImage } = useModelConversion({
+  const { activeTask, handleConvertImageShape } = useModelConversion({
     repository: modelConversionRepository,
   });
 
   return (
     <div className="app-shell" onDragOver={handleDragOver} onDrop={handleDrop}>
-      <MeshyConversionPanel
-        isConverting={state.isConverting}
-        buttonText={convertButtonText}
-        statusText={state.statusText}
-        latestGlbUrl={state.latestGlbUrl}
-        onConvert={() => {
-          void handleConvertSelectedImage(editorRef.current);
-        }}
-      />
       <Tldraw
         onMount={handleMount}
+        shapeUtils={[MeshyModelShapeUtil as never]}
         components={{
-          InFrontOfTheCanvas: null,
+          InFrontOfTheCanvas: () => (
+            <>
+              <ImageToModelOverlay
+                activeTask={activeTask}
+                onConvert={(shapeId) => {
+                  void handleConvertImageShape(editorRef.current, shapeId);
+                }}
+              />
+              <ModelRotationOverlay />
+            </>
+          ),
           Toolbar: TldrawMinimalToolbar,
           TopPanel: null,
           MenuPanel: null,
