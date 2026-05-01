@@ -17,6 +17,7 @@ export function CanvasEditorPage() {
   return (
     <div className="app-shell" onDragOver={handleDragOver} onDrop={handleDrop}>
       <Tldraw
+        licenseKey={import.meta.env.VITE_TLDRAW_LICENSE_KEY}
         onMount={handleMount}
         shapeUtils={[MeshyModelShapeUtil as never]}
         components={{

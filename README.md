@@ -36,6 +36,16 @@ pnpm test:coverage
 pnpm preview
 ```
 
+### 环境变量（安全建议）
+
+- 前端变量（会暴露到浏览器）：
+  - `VITE_APP_ENV`
+  - `VITE_TLDRAW_LICENSE_KEY`
+- 服务端变量（不会暴露到前端）：
+  - `MESHY_API_KEY`（用于 Vercel `api/meshy/*` 路由）
+
+注意：`MESHY_API_KEY` 不要再使用 `VITE_` 前缀，否则会被打包到前端产物中。
+
 ---
 
 ## 4. Part 1 调研笔记

@@ -1,6 +1,6 @@
 import { MESHY_POLLING } from "@/shared/constants/meshy.constants";
 
-const MESHY_BASE_URL = "https://api.meshy.ai/openapi/v1/image-to-3d";
+const API_BASE_URL = "/api/meshy";
 
 interface MeshyTaskResponse {
   id: string;
@@ -15,20 +15,10 @@ interface MeshyTaskResponse {
   };
 }
 
-function getApiKey() {
-  const apiKey = import.meta.env.VITE_MESHY_API_KEY;
-  if (!apiKey) {
-    throw new Error("缺少 Meshy API Key。请在 .env.local 设置 VITE_MESHY_API_KEY=...");
-  }
-
-  return apiKey;
-}
-
-async function requestMeshy<T>(path: string, init: RequestInit = {}) {
-  const response = await fetch(`${MESHY_BASE_URL}${path}`, {
+async function requestBackend<T>(path: string, init: RequestInit = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
       "Content-Type": "application/json",
       ...(init.headers || {}),
     },
@@ -44,21 +34,18 @@ async function requestMeshy<T>(path: string, init: RequestInit = {}) {
 }
 
 export async function createMeshyImageTo3DTask(imageDataUri: string) {
-  const response = await requestMeshy<{ result: string }>("", {
+  const response = await requestBackend<{ taskId: string }>("/create", {
     method: "POST",
     body: JSON.stringify({
-      image_url: imageDataUri,
-      ai_model: "latest",
-      should_texture: true,
-      target_formats: ["glb"],
+      imageDataUri,
     }),
   });
 
-  return response.result;
+  return response.taskId;
 }
 
 function getMeshyImageTo3DTask(taskId: string) {
-  return requestMeshy<MeshyTaskResponse>(`/${taskId}`);
+  return requestBackend<MeshyTaskResponse>(`/task?taskId=${encodeURIComponent(taskId)}`);
 }
 
 function sleep(ms: number) {
