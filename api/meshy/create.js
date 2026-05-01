@@ -1,7 +1,7 @@
 const MESHY_BASE_URL = "https://api.meshy.ai/openapi/v1/image-to-3d";
 
 function getApiKey() {
-  const apiKey = process.env.MESHY_API_KEY;
+  const apiKey = process.env.MESHY_API_KEY?.trim();
   if (!apiKey) {
     throw new Error("Missing MESHY_API_KEY in server environment.");
   }
