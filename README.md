@@ -40,6 +40,17 @@ pnpm test:coverage
 pnpm preview
 ```
 
+## 3.1 CI/CD（GitHub Actions + Vercel）
+
+- 已配置 GitHub Actions：`.github/workflows/ci.yml`
+- 触发条件：`push` / `pull_request` 到 `master`
+- 流水线步骤：`pnpm install` -> `lint` -> `tsc -b` -> `test` -> `build`
+- 部署策略：`master` 合并后由 Vercel Git Integration 自动触发构建与上线
+- 最新一次失败原因（已定位并修复）：
+  - `MeshyModelShapeBody` 函数行数超过项目 lint 上限（max 50）
+  - Hook 依赖检查报错：`useEffect` missing dependency
+  - 已通过组件/Hook 拆分修复，确保符合 CI lint 规则
+
 ### 环境变量（安全建议）
 
 - 前端变量（会暴露到浏览器）：

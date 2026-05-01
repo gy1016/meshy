@@ -13,6 +13,12 @@ interface MeshModelProps extends MeshyModelShapeBodyProps {
   onModelReady: () => void;
 }
 
+interface LoadingState {
+  isLoading: boolean;
+  handleCanvasCreated: () => void;
+  handleModelReady: () => void;
+}
+
 function getAdaptiveDpr(zoomLevel: number) {
   const deviceDpr = typeof window === "undefined" ? 1 : window.devicePixelRatio;
   const scaled = deviceDpr * Math.max(zoomLevel, 0.5);
@@ -20,7 +26,8 @@ function getAdaptiveDpr(zoomLevel: number) {
 }
 
 function MeshModel(props: MeshModelProps) {
-  const { scene } = useGLTF(props.assetUrl);
+  const { assetUrl, onModelReady, yRotation } = props;
+  const { scene } = useGLTF(assetUrl);
   const model = useMemo(() => scene.clone(true), [scene]);
   const transform = useMemo(() => {
     const box = new Box3().setFromObject(model);
@@ -35,11 +42,11 @@ function MeshModel(props: MeshModelProps) {
   }, [model]);
 
   useEffect(() => {
-    props.onModelReady();
-  }, [model, props.onModelReady]);
+    onModelReady();
+  }, [model, onModelReady]);
 
   return (
-    <group rotation={[0, props.yRotation, 0]} scale={transform.scale} position={transform.position}>
+    <group rotation={[0, yRotation, 0]} scale={transform.scale} position={transform.position}>
       <primitive object={model} />
     </group>
   );
@@ -61,17 +68,23 @@ function MeshScene(props: MeshModelProps) {
   );
 }
 
-export function MeshyModelShapeBody(props: MeshyModelShapeBodyProps) {
-  const editor = useEditor();
-  const zoomLevel = useValue("zoom-level", () => editor.getZoomLevel(), [editor]);
-  const dpr = useMemo(() => getAdaptiveDpr(zoomLevel), [zoomLevel]);
+function LoadingOverlay() {
+  return (
+    <div className="meshy-model-shape__loading">
+      <span className="meshy-model-shape__spinner" aria-hidden />
+      <span>模型加载中...</span>
+    </div>
+  );
+}
+
+function useModelLoadingState(assetUrl: string): LoadingState {
   const [canvasReady, setCanvasReady] = useState(false);
   const [modelReady, setModelReady] = useState(false);
 
   useEffect(() => {
     setCanvasReady(false);
     setModelReady(false);
-  }, [props.assetUrl]);
+  }, [assetUrl]);
 
   const handleCanvasCreated = useCallback(() => {
     requestAnimationFrame(() => {
@@ -83,20 +96,26 @@ export function MeshyModelShapeBody(props: MeshyModelShapeBodyProps) {
     setModelReady(true);
   }, []);
 
+  return {
+    isLoading: !canvasReady || !modelReady,
+    handleCanvasCreated,
+    handleModelReady,
+  };
+}
+
+export function MeshyModelShapeBody(props: MeshyModelShapeBodyProps) {
+  const editor = useEditor();
+  const zoomLevel = useValue("zoom-level", () => editor.getZoomLevel(), [editor]);
+  const dpr = useMemo(() => getAdaptiveDpr(zoomLevel), [zoomLevel]);
+  const loading = useModelLoadingState(props.assetUrl);
+
   if (!props.assetUrl) {
     return <div className="meshy-model-shape__fallback">缺少 GLB 地址</div>;
   }
 
-  const isLoading = !canvasReady || !modelReady;
-
   return (
     <div className="meshy-model-shape__canvas-wrap">
-      {isLoading ? (
-        <div className="meshy-model-shape__loading">
-          <span className="meshy-model-shape__spinner" aria-hidden />
-          <span>模型加载中...</span>
-        </div>
-      ) : null}
+      {loading.isLoading ? <LoadingOverlay /> : null}
       <Canvas
         className="meshy-model-shape__canvas"
         style={{ width: "100%", height: "100%" }}
@@ -104,13 +123,13 @@ export function MeshyModelShapeBody(props: MeshyModelShapeBodyProps) {
         resize={{ scroll: false, debounce: { scroll: 0, resize: 0 }, offsetSize: true }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         camera={{ position: [0, 0, 3.8], fov: 34, near: 0.01, far: 1000 }}
-        onCreated={handleCanvasCreated}
+        onCreated={loading.handleCanvasCreated}
       >
         <Suspense fallback={null}>
           <MeshScene
             assetUrl={props.assetUrl}
             yRotation={props.yRotation}
-            onModelReady={handleModelReady}
+            onModelReady={loading.handleModelReady}
           />
         </Suspense>
       </Canvas>
