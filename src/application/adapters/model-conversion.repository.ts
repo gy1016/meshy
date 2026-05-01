@@ -14,9 +14,21 @@ import {
   waitForMockImageTo3DTask,
 } from "@/infrastructure/meshy/meshy-mock-client";
 
-const isDevelopEnv = ["development", "develop"].includes(
-  import.meta.env.VITE_APP_ENV ?? "",
-);
+type MeshyMode = "mock" | "proxy" | "direct";
+
+function resolveMeshyMode(): MeshyMode {
+  const rawMode = (import.meta.env.VITE_MESHY_MODE ?? "").toLowerCase();
+  if (rawMode === "mock" || rawMode === "proxy" || rawMode === "direct") {
+    return rawMode;
+  }
+
+  const isDevelopEnv = ["development", "develop"].includes(import.meta.env.VITE_APP_ENV ?? "");
+  return isDevelopEnv ? "mock" : "proxy";
+}
+
+const meshyMode = resolveMeshyMode();
+const useMock = meshyMode === "mock";
+const useDirect = meshyMode === "direct";
 
 function mapTask(task: {
   id: string;
@@ -36,15 +48,15 @@ function mapTask(task: {
 
 export const modelConversionRepository: ModelConversionRepository = {
   createImageTo3DTask(input: CreateImageTo3DTaskInput) {
-    if (isDevelopEnv) {
+    if (useMock) {
       return Promise.resolve(createMockImageTo3DTask());
     }
 
-    return createMeshyImageTo3DTask(input.imageDataUri);
+    return createMeshyImageTo3DTask(input.imageDataUri, useDirect);
   },
 
   async waitForImageTo3DTask(taskId, onProgress) {
-    if (isDevelopEnv) {
+    if (useMock) {
       const task = await waitForMockImageTo3DTask(taskId, (currentTask) => {
         onProgress(mapTask(currentTask));
       });
@@ -52,15 +64,19 @@ export const modelConversionRepository: ModelConversionRepository = {
       return mapTask(task);
     }
 
-    const task = await waitForMeshyImageTo3DTask(taskId, (currentTask) => {
-      onProgress(mapTask(currentTask));
-    });
+    const task = await waitForMeshyImageTo3DTask(
+      taskId,
+      (currentTask) => {
+        onProgress(mapTask(currentTask));
+      },
+      useDirect,
+    );
 
     return mapTask(task);
   },
 
   toDataUriFromUrl(url: string) {
-    if (isDevelopEnv) {
+    if (useMock) {
       return toDataUriFromUrlInMock(url);
     }
 
