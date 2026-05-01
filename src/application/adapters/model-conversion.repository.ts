@@ -8,6 +8,15 @@ import {
   toDataUriFromUrl,
   waitForMeshyImageTo3DTask,
 } from "@/infrastructure/meshy/meshy-client";
+import {
+  createMockImageTo3DTask,
+  toDataUriFromUrl as toDataUriFromUrlInMock,
+  waitForMockImageTo3DTask,
+} from "@/infrastructure/meshy/meshy-mock-client";
+
+const isDevelopEnv = ["development", "develop"].includes(
+  import.meta.env.VITE_APP_ENV ?? "",
+);
 
 function mapTask(task: {
   id: string;
@@ -27,10 +36,22 @@ function mapTask(task: {
 
 export const modelConversionRepository: ModelConversionRepository = {
   createImageTo3DTask(input: CreateImageTo3DTaskInput) {
+    if (isDevelopEnv) {
+      return Promise.resolve(createMockImageTo3DTask());
+    }
+
     return createMeshyImageTo3DTask(input.imageDataUri);
   },
 
   async waitForImageTo3DTask(taskId, onProgress) {
+    if (isDevelopEnv) {
+      const task = await waitForMockImageTo3DTask(taskId, (currentTask) => {
+        onProgress(mapTask(currentTask));
+      });
+
+      return mapTask(task);
+    }
+
     const task = await waitForMeshyImageTo3DTask(taskId, (currentTask) => {
       onProgress(mapTask(currentTask));
     });
@@ -38,5 +59,11 @@ export const modelConversionRepository: ModelConversionRepository = {
     return mapTask(task);
   },
 
-  toDataUriFromUrl,
+  toDataUriFromUrl(url: string) {
+    if (isDevelopEnv) {
+      return toDataUriFromUrlInMock(url);
+    }
+
+    return toDataUriFromUrl(url);
+  },
 };
