@@ -1,4 +1,5 @@
 const MESHY_BASE_URL = "https://api.meshy.ai/openapi/v1/image-to-3d";
+const LOCAL_ASSET_PROXY_PATH = "/api/meshy/asset?url=";
 
 function getApiKey() {
   const apiKey = process.env.MESHY_API_KEY?.trim();
@@ -36,6 +37,11 @@ export default async function handler(req, res) {
         error: body?.message || body?.error || `Meshy request failed (${response.status})`,
       });
       return;
+    }
+
+    const glbUrl = body?.model_urls?.glb;
+    if (typeof glbUrl === "string" && glbUrl) {
+      body.model_urls.glb = `${LOCAL_ASSET_PROXY_PATH}${encodeURIComponent(glbUrl)}`;
     }
 
     res.status(200).json(body);

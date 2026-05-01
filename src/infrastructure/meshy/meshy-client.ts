@@ -1,6 +1,7 @@
 import { MESHY_POLLING } from "@/shared/constants/meshy.constants";
 
 const API_BASE_URL = "/api/meshy";
+const MESHY_DIRECT_BASE_URL = "https://api.meshy.ai/openapi/v1/image-to-3d";
 
 interface MeshyTaskResponse {
   id: string;
@@ -33,7 +34,49 @@ async function requestBackend<T>(path: string, init: RequestInit = {}) {
   return body as T;
 }
 
-export async function createMeshyImageTo3DTask(imageDataUri: string) {
+function getDirectApiKey() {
+  const apiKey = import.meta.env.VITE_MESHY_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("缺少 VITE_MESHY_API_KEY（direct 模式）");
+  }
+
+  return apiKey;
+}
+
+async function requestMeshyDirect<T>(path: string, init: RequestInit = {}) {
+  const response = await fetch(`${MESHY_DIRECT_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${getDirectApiKey()}`,
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = body?.message || body?.error || `Meshy API 请求失败（${response.status}）`;
+    throw new Error(message);
+  }
+
+  return body as T;
+}
+
+export async function createMeshyImageTo3DTask(imageDataUri: string, useDirect: boolean) {
+  if (useDirect) {
+    const response = await requestMeshyDirect<{ result: string }>("", {
+      method: "POST",
+      body: JSON.stringify({
+        image_url: imageDataUri,
+        ai_model: "latest",
+        should_texture: true,
+        target_formats: ["glb"],
+      }),
+    });
+
+    return response.result;
+  }
+
   const response = await requestBackend<{ taskId: string }>("/create", {
     method: "POST",
     body: JSON.stringify({
@@ -46,6 +89,12 @@ export async function createMeshyImageTo3DTask(imageDataUri: string) {
 
 function getMeshyImageTo3DTask(taskId: string) {
   return requestBackend<MeshyTaskResponse>(`/task?taskId=${encodeURIComponent(taskId)}`);
+}
+
+function getMeshyImageTo3DTaskDirect(taskId: string) {
+  return requestMeshyDirect<MeshyTaskResponse>(`/${encodeURIComponent(taskId)}`, {
+    method: "GET",
+  });
 }
 
 function sleep(ms: number) {
@@ -67,13 +116,14 @@ function getPollingDelayMs(progress: number, elapsedMs: number) {
 export async function waitForMeshyImageTo3DTask(
   taskId: string,
   onProgress: (task: MeshyTaskResponse) => void,
+  useDirect: boolean,
 ) {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < MESHY_POLLING.timeoutMs) {
     let task: MeshyTaskResponse;
     try {
-      task = await getMeshyImageTo3DTask(taskId);
+      task = useDirect ? await getMeshyImageTo3DTaskDirect(taskId) : await getMeshyImageTo3DTask(taskId);
       onProgress(task);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
