@@ -1,4 +1,4 @@
-html,
+﻿html,
 body,
 #root {
   margin: 0;
@@ -14,6 +14,10 @@ body,
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+.app-shell .tl-watermark_SEE-LICENSE {
+  display: none;
 }
 
 .meshy-panel {

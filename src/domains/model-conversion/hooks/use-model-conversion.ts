@@ -1,10 +1,11 @@
+﻿import { message } from "antd";
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { TLAsset, TLAssetId, TLImageShape } from "tldraw";
-import { MESHY_PANEL_TEXT } from "@/shared/constants/meshy.constants";
 import type { Editor } from "tldraw";
 import type { ModelConversionRepository } from "@/domains/model-conversion/repositories/model-conversion.repository";
 import { convertImageTo3D } from "@/domains/model-conversion/services/convert-image-to-3d.service";
 import type { ModelConversionState } from "@/domains/model-conversion/types/model-conversion.type";
+import { MESHY_PANEL_TEXT } from "@/shared/constants/meshy.constants";
 
 interface UseModelConversionOptions {
   repository: ModelConversionRepository;
@@ -21,13 +22,13 @@ type ConversionStateSetter = Dispatch<SetStateAction<ModelConversionState>>;
 async function resolveSelectedImageUrl(editor: Editor) {
   const selectedShape = editor.getOnlySelectedShape() as TLImageShape | null;
   if (!selectedShape || selectedShape.type !== "image") {
-    window.alert("请先选中一张图片后再进行转换。");
+    message.warning("请先选中一张图片后再进行转换。");
     return null;
   }
 
   const assetId = selectedShape.props.assetId;
   if (!assetId) {
-    window.alert("当前图片缺少 asset 信息，无法转换。");
+    message.warning("当前图片缺少 asset 信息，无法转换。");
     return null;
   }
 
@@ -40,7 +41,7 @@ async function resolveSelectedImageUrl(editor: Editor) {
     }));
 
   if (!imageUrl) {
-    window.alert("无法读取图片地址，请重新上传图片后重试。");
+    message.warning("无法读取图片地址，请重新上传图片后重试。");
     return null;
   }
 
@@ -74,12 +75,12 @@ function setSuccessState(setState: ConversionStateSetter, glbUrl: string) {
   });
 }
 
-function setErrorState(setState: ConversionStateSetter, message: string) {
+function setErrorState(setState: ConversionStateSetter, errorMessage: string) {
   setState((prevState) => ({
     ...prevState,
     isConverting: false,
     status: "error",
-    statusText: `转换失败：${message}`,
+    statusText: `转换失败：${errorMessage}`,
   }));
 }
 
@@ -100,11 +101,11 @@ function createConvertHandler(
       });
 
       setSuccessState(setState, glbUrl);
-      window.alert("转换成功，页面右下角已生成 GLB 链接。");
+      message.success("转换成功，页面右下角已生成 GLB 链接。");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "未知错误";
-      setErrorState(setState, message);
-      window.alert(`转换失败：${message}`);
+      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      setErrorState(setState, errorMessage);
+      message.error(`转换失败：${errorMessage}`);
     }
   };
 }

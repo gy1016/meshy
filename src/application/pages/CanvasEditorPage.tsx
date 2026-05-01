@@ -1,8 +1,9 @@
-import { Tldraw } from "tldraw";
+﻿import { Tldraw } from "tldraw";
 import { modelConversionRepository } from "@/application/adapters/model-conversion.repository";
 import { useCanvasEditor } from "@/domains/canvas-editor";
 import { useModelConversion } from "@/domains/model-conversion";
 import { MeshyConversionPanel } from "@/shared/ui/MeshyConversionPanel";
+import { TldrawMinimalToolbar } from "@/shared/ui/TldrawMinimalToolbar";
 import "tldraw/tldraw.css";
 
 export function CanvasEditorPage() {
@@ -25,6 +26,8 @@ export function CanvasEditorPage() {
       <Tldraw
         onMount={handleMount}
         components={{
+          InFrontOfTheCanvas: null,
+          Toolbar: TldrawMinimalToolbar,
           TopPanel: null,
           MenuPanel: null,
           SharePanel: null,
