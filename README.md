@@ -46,10 +46,6 @@ pnpm preview
 - 触发条件：`push` / `pull_request` 到 `master`
 - 流水线步骤：`pnpm install` -> `lint` -> `tsc -b` -> `test` -> `build`
 - 部署策略：`master` 合并后由 Vercel Git Integration 自动触发构建与上线
-- 最新一次失败原因（已定位并修复）：
-  - `MeshyModelShapeBody` 函数行数超过项目 lint 上限（max 50）
-  - Hook 依赖检查报错：`useEffect` missing dependency
-  - 已通过组件/Hook 拆分修复，确保符合 CI lint 规则
 
 ### 环境变量（安全建议）
 
@@ -59,13 +55,17 @@ pnpm preview
 - 服务端变量（不会暴露到前端）：
   - `MESHY_API_KEY`（用于 Vercel `api/meshy/*` 路由）
 
-注意：`MESHY_API_KEY` 不要再使用 `VITE_` 前缀，否则会被打包到前端产物中。
-
 ---
 
 ## 4. Part 1 调研笔记
 
 ### 4.1 Krea「图片转 3D」体验观察
+
+#### 4.1.1 实时调整图片生成模型
+
+用户可以在画布上对图片进行编辑，然后实时渲染出三维模型平面图，右键点击可生成三维模型（额度不足生成失败）。
+
+#### 4.1.2 图片转模型
 
 - 流程可拆为“构网（mesh generation）”与“贴纹理（texturing）”。
 - 构网阶段会展示三角网格，并有基础光影动效。
@@ -87,14 +87,17 @@ pnpm preview
 
 ### 4.3 R3F 嵌入方案对比与选型
 
-| 方案 | 描述 | 性能 | 交互隔离 | 状态一致性 | 实现复杂度 | 可扩展性 | 总分 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| A | 每个 shape 独立 R3F Canvas | 3 | 5 | 5 | 5 | 3 | **21** |
-| B | 全局单 Canvas + 多视口 | 5 | 3 | 4 | 2 | 5 | **19** |
-| C | 预渲染贴图 + 按需实时 3D | 4 | 4 | 3 | 2 | 4 | **17** |
+本项目将 R3F 嵌入分为三种候选：
+
+- 方案 A：每个 shape 独立 Canvas（当前采用）
+- 方案 B：全局单 Canvas + 多视口（中长期目标）
+- 方案 C：预渲染快照 + 按需实时 3D（性能过渡方案）
 
 最终选型：**A（每 shape 独立 Canvas）**。  
 理由：在 4-6 小时限制下最稳、最短路径跑通 Must-have，且 history 与 shape 生命周期天然一致。
+
+详细对比、方案 B 坐标映射原理、undo/redo 融合与多人协同风险治理见：  
+[R3F 嵌入方案详细设计](./docs/r3f-embedding-strategy.md)
 
 ---
 
@@ -178,7 +181,7 @@ flowchart LR
 
 总用时：**约 5 小时 10 分钟**
 
-阶段分配（不含用餐）：
+阶段分配：
 
 - 调研与方案选型：约 45 分钟
 - 上传/转换链路与交互入口：约 70 分钟
