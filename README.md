@@ -4,6 +4,12 @@
 
 Vercel 在线地址：[https://meshy-three.vercel.app](https://meshy-three.vercel.app)
 
+## MCP 对话式文字转 3D 更新
+
+![MCP Demo](./docs/gif/mcp-demo.gif)
+
+- 详细实现与排查记录：[`docs/2026-05-08-mcp-text-to-3d-worklog.md`](./docs/2026-05-08-mcp-text-to-3d-worklog.md)
+
 ## 1. 项目概述
 
 本项目实现了一个 `3D in 2D Canvas` 原型：用户在 `tldraw` 无限画布中上传图片，并将其转换为可交互的 3D 模型 shape。
