@@ -54,6 +54,10 @@ pnpm preview
   - `VITE_TLDRAW_LICENSE_KEY`
 - 服务端变量（不会暴露到前端）：
   - `MESHY_API_KEY`（用于 Vercel `api/meshy/*` 路由）
+  - `OPENAI_API_KEY`（用于 `api/openai/chat`，画布右侧 AI 对话）
+  - `OPENAI_MODEL`（可选，默认 `gpt-4o-mini`）
+
+本地若使用 Meshy 代理路由或 OpenAI 对话，请在 `.env.local` 配置上述密钥，并用 `pnpm dev:vercel`（`dotenv -e .env.local -- vercel dev`）启动，以便 `api/*` 在无密钥泄露给浏览器的前提下读取环境变量。
 
 ---
 
@@ -106,6 +110,7 @@ pnpm preview
 ### 5.1 已完成
 
 - 无限画布 + 图片拖拽上传
+- 右侧浮动按钮打开 AI 助手（ChatGPT 对话 + Meshy 文字转 3D，底部进度条）
 - 图片 shape hover 触发“转 3D”入口
 - 转换过程覆盖层与进度反馈（含失败提示）
 - 图片原位替换为 `meshy-model` shape（保留位置与尺寸）
