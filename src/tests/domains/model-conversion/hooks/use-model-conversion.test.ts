@@ -4,7 +4,7 @@ import { message } from "antd";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Editor, TLShapeId } from "tldraw";
 import { useModelConversion } from "@/domains/model-conversion/hooks/use-model-conversion";
-import type { MeshyImageTo3DTask } from "@/domains/model-conversion/repositories/model-conversion.repository";
+import type { MeshyImageTo3DTask } from "@/shared/types/meshy-task.dto";
 import type { ModelConversionRepository } from "@/domains/model-conversion/repositories/model-conversion.repository";
 
 vi.mock("antd", () => ({

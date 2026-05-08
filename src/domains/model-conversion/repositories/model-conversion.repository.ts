@@ -1,18 +1,10 @@
-export type MeshyTaskStatus = "PENDING" | "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | "CANCELED";
-
-export interface MeshyImageTo3DTask {
-  id: string;
-  status: MeshyTaskStatus;
-  progress: number;
-  modelUrls?: {
-    glb?: string;
-  };
-  taskErrorMessage?: string;
-}
+export type { MeshyImageTo3DTask, MeshyTaskStatus } from "@/shared/types/meshy-task.dto";
 
 export interface CreateImageTo3DTaskInput {
   imageDataUri: string;
 }
+
+import type { MeshyImageTo3DTask } from "@/shared/types/meshy-task.dto";
 
 export interface ModelConversionRepository {
   createImageTo3DTask(input: CreateImageTo3DTaskInput): Promise<string>;

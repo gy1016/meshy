@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:vercel": "dotenv -e .env.local -- vercel dev",
+    "dev:vercel:bash": "cross-env NODE_USE_ENV_PROXY=1 HTTPS_PROXY=http://127.0.0.1:10809 HTTP_PROXY=http://127.0.0.1:10809 ALL_PROXY=http://127.0.0.1:10809 NO_PROXY=localhost,127.0.0.1 dotenv -e .env.local -- vercel dev",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -17,13 +18,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.2.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "antd": "^6.3.7",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "three": "^0.184.0",
-    "tldraw": "^4.5.10"
+    "tldraw": "^4.5.10",
+    "undici": "8.2.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",
@@ -32,6 +37,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.184.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "cross-env": "^10.1.0",
     "dotenv-cli": "^11.0.0",
     "jsdom": "^29.1.1",
     "oxfmt": "^0.47.0",
