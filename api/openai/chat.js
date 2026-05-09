@@ -6,9 +6,13 @@ import {
 import { ProxyAgent, setGlobalDispatcher } from "undici";
 
 function getApiKey() {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const apiKey =
+    process.env.DEEPSEEK_API_KEY?.trim() ||
+    process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error("Missing OPENAI_API_KEY in server environment.");
+    throw new Error(
+      "Missing DEEPSEEK_API_KEY (or OPENAI_API_KEY) in server environment.",
+    );
   }
 
   return apiKey;
@@ -47,10 +51,12 @@ function parseToolArguments(rawArguments) {
 
 let proxyConfigured = false;
 
-function ensureOpenAiProxy() {
+function ensureLlmProxy() {
   if (proxyConfigured) return;
 
-  const proxyUrl = process.env.OPENAI_PROXY_URL?.trim();
+  const proxyUrl =
+    process.env.DEEPSEEK_PROXY_URL?.trim() ||
+    process.env.OPENAI_PROXY_URL?.trim();
   if (!proxyUrl) {
     proxyConfigured = true;
     return;
@@ -104,9 +110,15 @@ function validateChatMessages(rawMessages) {
 }
 
 async function requestOpenAiCompletion(messages) {
-  ensureOpenAiProxy();
-  const model = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  ensureLlmProxy();
+  const model =
+    process.env.DEEPSEEK_MODEL?.trim() ||
+    process.env.OPENAI_MODEL?.trim() ||
+    "deepseek-chat";
+  const baseUrl =
+    process.env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com";
+  const endpoint = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${getApiKey()}`,
@@ -122,7 +134,10 @@ async function requestOpenAiCompletion(messages) {
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = body?.error?.message || body?.message || `OpenAI request failed (${response.status})`;
+    const message =
+      body?.error?.message ||
+      body?.message ||
+      `DeepSeek request failed (${response.status})`;
     throw new Error(message);
   }
 

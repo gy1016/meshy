@@ -60,10 +60,12 @@ pnpm preview
   - `VITE_TLDRAW_LICENSE_KEY`
 - 服务端变量（不会暴露到前端）：
   - `MESHY_API_KEY`（用于 Vercel `api/meshy/*` 路由）
-  - `OPENAI_API_KEY`（用于 `api/openai/chat`，画布右侧 AI 对话）
-  - `OPENAI_MODEL`（可选，默认 `gpt-4o-mini`）
+  - `DEEPSEEK_API_KEY`（用于 `api/openai/chat`，画布右侧 AI 对话）
+  - `DEEPSEEK_MODEL`（可选，默认 `deepseek-chat`）
+  - `DEEPSEEK_BASE_URL`（可选，默认 `https://api.deepseek.com`）
+  - `DEEPSEEK_PROXY_URL`（可选，优先于 `OPENAI_PROXY_URL`）
 
-本地若使用 Meshy 代理路由或 OpenAI 对话，请在 `.env.local` 配置上述密钥，并用 `pnpm dev:vercel`（`dotenv -e .env.local -- vercel dev`）启动，以便 `api/*` 在无密钥泄露给浏览器的前提下读取环境变量。
+本地若使用 Meshy 代理路由或 DeepSeek 对话，请在 `.env.local` 配置上述密钥，并用 `pnpm dev:vercel`（`dotenv -e .env.local -- vercel dev`）启动，以便 `api/*` 在无密钥泄露给浏览器的前提下读取环境变量。
 
 ---
 
