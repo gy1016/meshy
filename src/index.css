@@ -399,6 +399,70 @@ body,
   width: 100%;
 }
 
+.meshy-ai-chat__upload-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 4px;
+}
+
+.meshy-ai-chat__upload-btn.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.45);
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.meshy-ai-chat__upload-btn.ant-btn:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.meshy-ai-chat__upload-preview {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.meshy-ai-chat__upload-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  object-fit: cover;
+}
+
+.meshy-ai-chat__upload-remove {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(2, 6, 23, 0.85);
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 16px;
+  align-items: center;
+  justify-content: center;
+}
+
+.meshy-ai-chat__upload-remove:hover {
+  color: #f87171;
+}
+
 .meshy-ai-side textarea.meshy-ai-chat__input,
 .meshy-ai-side textarea.meshy-ai-mesh__input {
   border-radius: 10px;

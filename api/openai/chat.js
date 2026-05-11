@@ -3,6 +3,11 @@ import {
   getTextTo3dToolDefinition,
   TEXT_TO_3D_TOOL_NAME,
 } from "../mcp/text-to-3d-mcp-service.js";
+import {
+  callImageTo3dMcpTool,
+  getImageTo3dToolDefinition,
+  IMAGE_TO_3D_TOOL_NAME,
+} from "../mcp/image-to-3d-mcp-service.js";
 import { ProxyAgent, setGlobalDispatcher } from "undici";
 
 function getApiKey() {
@@ -68,15 +73,25 @@ function ensureLlmProxy() {
 
 async function resolveToolAction(toolCall) {
   const toolName = toolCall?.function?.name;
-  if (toolName !== TEXT_TO_3D_TOOL_NAME) return null;
 
-  const args = parseToolArguments(toolCall?.function?.arguments);
-  const toolResult = await callTextTo3dMcpTool(args);
-  const action = toolResult?.structuredContent?.action ?? null;
-  const message = toolResult?.content?.[0]?.text ?? "已触发文字转 3D。";
+  if (toolName === TEXT_TO_3D_TOOL_NAME) {
+    const args = parseToolArguments(toolCall?.function?.arguments);
+    const toolResult = await callTextTo3dMcpTool(args);
+    const action = toolResult?.structuredContent?.action ?? null;
+    const message = toolResult?.content?.[0]?.text ?? "已触发文字转 3D。";
+    if (!action) return null;
+    return { action, message };
+  }
 
-  if (!action) return null;
-  return { action, message };
+  if (toolName === IMAGE_TO_3D_TOOL_NAME) {
+    const toolResult = await callImageTo3dMcpTool();
+    const action = toolResult?.structuredContent?.action ?? null;
+    const message = toolResult?.content?.[0]?.text ?? "已触发图片转 3D。";
+    if (!action) return null;
+    return { action, message };
+  }
+
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -127,7 +142,7 @@ async function requestOpenAiCompletion(messages) {
     body: JSON.stringify({
       model,
       messages,
-      tools: [getTextTo3dToolDefinition()],
+      tools: [getTextTo3dToolDefinition(), getImageTo3dToolDefinition()],
       tool_choice: "auto",
     }),
   });

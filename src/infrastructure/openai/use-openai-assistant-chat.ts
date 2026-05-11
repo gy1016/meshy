@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import { sendChatCompletion } from "@/infrastructure/openai/openai-chat-client";
+import { sendChatCompletion, type ChatCompletionRole } from "@/infrastructure/openai/openai-chat-client";
 import type { ChatAction } from "@/shared/types/chat-action.dto";
 import type { ChatMessage } from "@/shared/types/chat-message.dto";
 
 interface UseOpenAiAssistantChatOptions {
   onAction?: (action: ChatAction) => Promise<void> | void;
+  systemHint?: string;
 }
 
 export interface ChatToolStatus {
@@ -14,19 +15,27 @@ export interface ChatToolStatus {
 }
 
 function createActionHint(action: ChatAction) {
-  if (action.type !== "text_to_3d_generate") {
-    return "已识别到工具调用。";
+  if (action.type === "text_to_3d_generate") {
+    return `已识别“文字转 3D”请求，正在执行：${action.prompt}`;
   }
 
-  return `已识别“文字转 3D”请求，正在执行：${action.prompt}`;
+  if (action.type === "image_to_3d_generate") {
+    return `已识别“图片转 3D”请求，正在执行转换`;
+  }
+
+  return `已识别到工具调用。`;
 }
 
 function getActionLabel(action: ChatAction) {
-  if (action.type !== "text_to_3d_generate") {
-    return "工具调用";
+  if (action.type === "text_to_3d_generate") {
+    return `文字转 3D`;
   }
 
-  return "文字转 3D";
+  if (action.type === "image_to_3d_generate") {
+    return `图片转 3D`;
+  }
+
+  return `工具调用`;
 }
 
 function createIdleToolStatus(): ChatToolStatus {
@@ -66,11 +75,16 @@ async function executeChatSend(params: {
   onAction: UseOpenAiAssistantChatOptions["onAction"];
   setMessages: Dispatch<SetStateAction<ChatMessage[]>>;
   setToolStatus: Dispatch<SetStateAction<ChatToolStatus>>;
+  systemHint?: string;
 }) {
-  const payload = params.nextMessages.map((message) => ({
+  const payload: { role: ChatCompletionRole; content: string }[] = params.nextMessages.map((message) => ({
     role: message.role,
     content: message.content,
   }));
+
+  if (params.systemHint) {
+    payload.unshift({ role: "system", content: params.systemHint });
+  }
 
   const result = await sendChatCompletion(payload);
   const reply = result.message || "（无回复）";
@@ -88,7 +102,7 @@ export function useOpenAiAssistantChat(options: UseOpenAiAssistantChatOptions = 
     {
       role: "assistant",
       content:
-        "你好，我是助手。你可以直接在对话里说“帮我生成一个 3D 模型：xxx”，我会自动调用文字转 3D。",
+        `你好，我是助手。你可以直接在对话里说"帮我生成一个 3D 模型：xxx"，我会自动调用文字转 3D。也可以上传图片后说"帮我把这张图转成 3D"。`,
     },
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -106,7 +120,7 @@ export function useOpenAiAssistantChat(options: UseOpenAiAssistantChatOptions = 
     setMessages(nextMessages);
 
     try {
-      await executeChatSend({ nextMessages, onAction, setMessages, setToolStatus });
+      await executeChatSend({ nextMessages, onAction, setMessages, setToolStatus, systemHint: options.systemHint });
     } catch (error) {
       const messageText = error instanceof Error ? error.message : String(error);
       appendAssistantMessage(setMessages, `请求失败：${messageText}`);

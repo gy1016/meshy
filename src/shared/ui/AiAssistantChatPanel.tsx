@@ -1,3 +1,4 @@
+import { PictureOutlined, CloseCircleFilled } from "@ant-design/icons";
 import { Button, Input } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
@@ -9,6 +10,9 @@ interface AiAssistantChatPanelProps {
   setChatInput: (value: string) => void;
   sending: boolean;
   onSend: () => void;
+  uploadedImage: string | null;
+  onUploadImage: (dataUri: string) => void;
+  onRemoveImage: () => void;
 }
 
 const OVERSCAN_COUNT = 6;
@@ -200,10 +204,76 @@ function ChatHistory(props: { messages: ChatMessage[] }) {
   );
 }
 
+function ImageUploadBar(props: {
+  uploadedImage: string | null;
+  onUploadImage: (dataUri: string) => void;
+  onRemoveImage: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      props.onUploadImage(String(reader.result));
+    };
+    reader.readAsDataURL(file);
+
+    // Reset so the same file can be re-uploaded
+    event.target.value = "";
+  }
+
+  return (
+    <div className="meshy-ai-chat__upload-bar">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+      <Button
+        className="meshy-ai-chat__upload-btn"
+        type="text"
+        size="small"
+        icon={<PictureOutlined />}
+        aria-label="上传图片用于转 3D"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        上传图片
+      </Button>
+      {props.uploadedImage ? (
+        <div className="meshy-ai-chat__upload-preview">
+          <img
+            className="meshy-ai-chat__upload-thumb"
+            src={props.uploadedImage}
+            alt="已上传预览"
+          />
+          <button
+            type="button"
+            className="meshy-ai-chat__upload-remove"
+            aria-label="移除图片"
+            onClick={props.onRemoveImage}
+          >
+            <CloseCircleFilled />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function AiAssistantChatPanel(props: AiAssistantChatPanelProps) {
   return (
     <div className="meshy-ai-chat">
       <ChatHistory messages={props.messages} />
+      <ImageUploadBar
+        uploadedImage={props.uploadedImage}
+        onUploadImage={props.onUploadImage}
+        onRemoveImage={props.onRemoveImage}
+      />
       <div className="meshy-ai-chat__composer">
         <Input.TextArea
           className="meshy-ai-chat__input"

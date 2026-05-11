@@ -3,5 +3,9 @@ export interface TextTo3DChatAction {
   prompt: string;
 }
 
-export type ChatAction = TextTo3DChatAction;
+export interface ImageTo3DChatAction {
+  type: "image_to_3d_generate";
+}
+
+export type ChatAction = TextTo3DChatAction | ImageTo3DChatAction;
 
